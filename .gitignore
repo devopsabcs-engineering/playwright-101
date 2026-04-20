@@ -384,6 +384,27 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Playwright
+playwright-tests/test-results/
+playwright-tests/playwright-report/
+playwright-tests/blob-report/
+playwright-tests/.playwright/
+
+# Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+Gemfile.lock
+
+# OS
+.DS_Store
+Thumbs.db
 FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
