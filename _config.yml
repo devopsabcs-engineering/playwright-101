@@ -1,8 +1,8 @@
 title: "Playwright 101 Workshop"
 description: "From User Stories to Automated Tests with Playwright, GitHub Copilot & Azure DevOps"
 remote_theme: just-the-docs/just-the-docs
-baseurl: ""
-url: "https://vigilant-succotash-8wgy34z.pages.github.io"
+baseurl: "/playwright-101"
+url: "https://devopsabcs-engineering.github.io"
 exclude:
   - playwright-tests/
   - delivery/
