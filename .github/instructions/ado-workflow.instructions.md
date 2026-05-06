@@ -1,5 +1,5 @@
 ---
-description: "Required workflow for Azure DevOps work item tracking, Git branching, pull requests, and branch cleanup in the Playwright project."
+description: "Required workflow for Azure DevOps work item tracking, Git branching, pull requests, branch cleanup, and QA test coverage in the Playwright101 project."
 applyTo: "**"
 maturity: stable
 ---
@@ -9,7 +9,7 @@ maturity: stable
 ## ADO Organization and Project
 
 * Organization: `MngEnvMCAP675646`
-* Project: `Playwright`
+* Project: `Playwright101`
 
 All work items, boards, and test plans live in this project.
 
@@ -107,6 +107,57 @@ After the pull request is merged and closed in GitHub:
 
 Always delete both the remote and local feature branch after a successful merge. Do not keep stale branches.
 
+## QA and Test Coverage
+
+QA artifacts in Azure DevOps follow a strict hierarchy and traceability model. Every User Story must be verified by Test Cases that are organized into Test Suites within a Test Plan.
+
+### Test Artifact Hierarchy
+
+Follow this strict hierarchy for every QA artifact:
+
+```text
+Test Plan
+ └── Test Suite (static)
+      └── Test Case
+           └── Tests (link) ──> User Story
+```
+
+Rules:
+
+* Every Test Case must belong to a Test Suite.
+* Every Test Suite must belong to a Test Plan.
+* Prefer **static** test suites over query-based or requirement-based suites for now.
+* Create the parent Test Plan and Test Suite first if they do not exist before creating Test Cases.
+* Test Plans, Test Suites, and Test Cases must include the tag `Agentic AI` (consistent with other work items).
+
+### Test Coverage Requirements
+
+Every User Story must be covered by Test Cases that exercise its acceptance criteria:
+
+* A User Story must be covered by **at least as many Test Cases as it has acceptance criteria** (one Test Case per AC at minimum).
+* Each Test Case should map clearly to one acceptance criterion. Reference the AC identifier (for example, `AC-1`) in the Test Case title or steps so traceability is obvious.
+* Additional Test Cases beyond the AC count are allowed and encouraged for edge cases, negative paths, and regression coverage.
+* A User Story is **not considered ready for closure** until its Test Cases exist, are linked, and are part of the active Test Plan.
+
+### Tests Link Requirement
+
+Every Test Case that verifies a User Story must use the Azure DevOps **`Tests`** link type to establish traceability:
+
+* Link direction: Test Case → `Tests` → User Story.
+* The reverse link (`Tested By`) is created automatically on the User Story.
+* Do **not** use generic `Related` links in place of the `Tests` link; the `Tests` relationship is what enables ADO test coverage reports and traceability matrices.
+* Verify the link appears under the User Story's **Related Work** section as `Tested By` before considering the Test Case complete.
+
+### QA Workflow Summary
+
+1. Identify the User Story and count its acceptance criteria.
+2. Ensure (or create) a Test Plan for the parent Feature or release.
+3. Ensure (or create) a static Test Suite under that Test Plan for the User Story or Feature scope.
+4. Create one Test Case per acceptance criterion (minimum), referencing the AC identifier in the title.
+5. Add each Test Case to the static Test Suite.
+6. Link each Test Case to the User Story using the `Tests` link type.
+7. Tag every Test Plan, Test Suite, and Test Case with `Agentic AI`.
+
 ## Quick Reference
 
 | Step | Command or Action |
@@ -118,3 +169,7 @@ Always delete both the remote and local feature branch after a successful merge.
 | After merge: sync | `git checkout main && git pull origin main` |
 | After merge: delete remote | `git push origin --delete feature/{id}-description` |
 | After merge: delete local | `git branch -d feature/{id}-description` |
+| Test coverage minimum | One Test Case per acceptance criterion on the User Story |
+| Test artifact hierarchy | Test Plan -> Test Suite (static) -> Test Case |
+| Test Case to User Story link | Use the `Tests` link type (creates `Tested By` on the User Story) |
+| Test artifact tag | Apply `Agentic AI` to every Test Plan, Test Suite, and Test Case |
