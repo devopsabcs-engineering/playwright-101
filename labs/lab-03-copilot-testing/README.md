@@ -171,4 +171,6 @@ verify meaningful behavior.
 
 ## Next Steps
 
-Proceed to [Lab 04: CI/CD Pipeline](../lab-04-ci-pipeline/).
+Proceed to [Lab 04: CI/CD Pipeline (GitHub Actions)](../lab-04-ci-pipeline/) or
+[Lab 04: CI/CD Pipeline (Azure DevOps)](../lab-04-ci-pipeline-ado/), depending on where
+your repository lives.

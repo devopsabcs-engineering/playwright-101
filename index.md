@@ -35,7 +35,8 @@ execution in a live pipeline.
 | Lab 01 | [From User Stories to Test Cases](labs/lab-01-test-planning/) | 10 min | Map requirements to tests |
 | Lab 02 | [Your First Playwright Test](labs/lab-02-playwright-basics/) | 20 min | Hands-on test authoring |
 | Lab 03 | [GitHub Copilot for Testing](labs/lab-03-copilot-testing/) | 15 min | AI-assisted test generation |
-| Lab 04 | [CI/CD Pipeline](labs/lab-04-ci-pipeline/) | 15 min | Automated test execution |
+| Lab 04 | [CI/CD Pipeline (GitHub Actions)](labs/lab-04-ci-pipeline/) | 15 min | Automated test execution |
+| Lab 04 | [CI/CD Pipeline (Azure DevOps)](labs/lab-04-ci-pipeline-ado/) | 15 min | Automated test execution |
 
 ## Target Application
 
