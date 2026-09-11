@@ -2,12 +2,12 @@
 layout: default
 title: "Lab 04: CI/CD Pipeline (Azure DevOps)"
 nav_order: 7
-description: "Automate Playwright tests with Azure DevOps Pipelines"
+description: "Run functional and accessibility Playwright tests in parallel with Azure DevOps Pipelines"
 permalink: /labs/lab-04-ci-pipeline-ado/
 ---
 
 | | |
-|---|---|
+| --- | --- |
 | **Duration** | 15 minutes |
 | **Level** | Beginner |
 | **Type** | Demo + Configuration |
@@ -18,6 +18,7 @@ After completing this lab, you will be able to:
 
 * Understand CI/CD pipeline concepts for test automation
 * Read and modify an Azure DevOps YAML pipeline
+* Run functional and accessibility suites as independent matrix jobs
 * Create a pipeline in Azure DevOps from an existing YAML file
 * View test results and artifacts in Azure DevOps
 * Decide when to run tests (push, PR, schedule)
@@ -28,82 +29,56 @@ After completing this lab, you will be able to:
 * An Azure DevOps organization and project
 * Push access to the Azure DevOps (or mirrored GitHub) repository
 
-> This lab uses [GitHub Actions](../lab-04-ci-pipeline/) instead if your team's
-> repository lives on GitHub rather than Azure Repos.
+> [!NOTE]
+> Choose [GitHub Actions](../lab-04-ci-pipeline/) for the alternative CI lab.
+> Azure Pipelines can also build a GitHub repository.
 
 ## Exercises
 
 ### Exercise 1: Review the Pipeline
 
-Open `.azuredevops/pipelines/playwright-tests.yml` in VS Code. This pipeline
-automates the entire test cycle on every code change:
+Open [.azuredevops/pipelines/playwright-tests.yml](https://github.com/devopsabcs-engineering/playwright-101/blob/main/.azuredevops/pipelines/playwright-tests.yml)
+in VS Code. Focus on this matrix from the full pipeline:
 
 ```yaml
-trigger:
-  branches:
-    include:
-      - main
-
-pr:
-  branches:
-    include:
-      - main
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-  - task: NodeTool@0
-    inputs:
-      versionSpec: '20.x'
-    displayName: 'Install Node.js'
-
-  - task: PowerShell@2
-    inputs:
-      targetType: 'filePath'
-      filePath: 'scripts/run-tests.ps1'
-      pwsh: true
-    displayName: 'Run Playwright tests'
-
-  - task: PublishTestResults@2
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: 'JUnit'
-      testResultsFiles: 'playwright-tests/test-results/junit.xml'
-      failTaskOnFailedTests: true
-    displayName: 'Publish test results'
-
-  - task: PublishPipelineArtifact@1
-    condition: succeededOrFailed()
-    inputs:
-      targetPath: 'playwright-tests/playwright-report'
-      artifact: 'playwright-report'
-    displayName: 'Publish Playwright HTML report'
-
-  - task: PublishPipelineArtifact@1
-    condition: succeededOrFailed()
-    inputs:
-      targetPath: 'playwright-tests/test-results'
-      artifact: 'test-results-screenshots'
-    displayName: 'Publish test result screenshots'
+jobs:
+  - job: Playwright
+    displayName: 'Playwright tests'
+    strategy:
+      maxParallel: 2
+      matrix:
+        Functional:
+          suite: 'functional'
+          junitPath: 'test-results/junit.xml'
+          reportPath: 'playwright-report'
+          resultsPath: 'test-results'
+        Accessibility:
+          suite: 'accessibility'
+          junitPath: 'test-results/accessibility/junit.xml'
+          reportPath: 'playwright-report/accessibility'
+          resultsPath: 'test-results/accessibility'
 ```
 
-Key sections to understand:
+Each matrix entry runs independently on an Ubuntu agent. `maxParallel: 2` allows
+both suites to run at once, subject to your organization's parallel-job capacity.
+With one available slot, the jobs queue instead of running simultaneously.
 
-* **Trigger events** (`trigger`, `pr`): The pipeline runs on every push to `main` and
-  on every pull request targeting `main`.
-* **Agent pool** (`pool.vmImage`): Tests execute on a fresh Microsoft-hosted Ubuntu
-  agent.
-* **Node.js setup** (`NodeTool@0`): Installs Node.js 20 on the agent.
-* **Test execution** (`PowerShell@2`): Runs `scripts/run-tests.ps1`, the same script
-  used locally. It installs npm dependencies and Playwright browsers on first run,
-  then executes `npx playwright test` with screenshots enabled for every test.
-* **Test results** (`PublishTestResults@2`): Publishes the JUnit XML report so pass/fail
-  counts and durations appear in the pipeline's **Tests** tab. `failTaskOnFailedTests`
-  marks the pipeline run as failed when any test fails.
-* **Artifact publishing** (`PublishPipelineArtifact@1`): Saves the HTML report and raw
-  screenshots regardless of test outcome (`condition: succeededOrFailed()`), so both
-  are available for download after the run.
+Read the steps below the matrix in the full pipeline:
+
+* `UseNode@1` installs Node.js 20; `npm install` installs test dependencies.
+* Playwright installs Chromium and its system dependencies.
+* `npm run test:$(suite)` selects the functional or accessibility config.
+* `PLAYWRIGHT_SCREENSHOT: 'on'` enables screenshots for every test, and the shared
+  config records traces on the first retry.
+* `PublishTestResults@2` publishes `$(junitPath)` with the title
+  `Playwright $(suite)`. Failed tests or missing JUnit results fail this step.
+* `PublishPipelineArtifact@1` publishes suite-specific reports and raw results with
+  `condition: succeededOrFailed()`, preserving generated evidence after failures.
+
+> [!IMPORTANT]
+> The YAML `pr` trigger applies to GitHub repositories. For Azure Repos Git,
+> configure a build validation branch policy on `main` to run this pipeline for PRs.
+> The `trigger` section runs builds for pushes to `main` in either case.
 
 ### Exercise 2: Create the Pipeline in Azure DevOps
 
@@ -130,19 +105,20 @@ test('navigate to Ontario.ca search page', async ({ page }) => {
 });
 ```
 
-Commit and push the change:
+Commit and push from your work-item feature branch. Replace `1234` with your
+User Story or Bug ID, linked to a Feature and Epic, then open a PR targeting `main`:
 
 ```bash
-git add .
-git commit -m "test: add console.log for CI verification"
-git push
+git add playwright-tests/tests/ontario-search.spec.ts
+git commit -m "test: verify parallel CI suites AB#1234"
+git push -u origin HEAD
 ```
 
 ### Exercise 4: Watch the Pipeline
 
 1. Open your project in Azure DevOps and select **Pipelines**.
-2. Find the run triggered by your push.
-3. Select the run to watch each stage execute in real time.
+2. Find the run triggered by your PR (with the required trigger or branch policy).
+3. Check both **Functional** and **Accessibility** matrix jobs and their logs.
 
 The pipeline progresses through Node.js setup, test execution, test results
 publishing, and artifact upload. Each step shows its own log output.
@@ -154,19 +130,22 @@ After the pipeline completes:
 1. Check the overall status: green checkmark (passed) or red X (failed).
 2. Select the **Tests** tab to see pass/fail counts, durations, and failure details
    sourced from the JUnit report.
-3. Select the **Artifacts** dropdown near the top of the run and download the
-   `playwright-report` or `test-results-screenshots` artifact.
+3. Select **Artifacts** and find both suites' outputs:
+
+| Suite | HTML report | JUnit, screenshots, and traces |
+| --- | --- | --- |
+| Functional | `playwright-report-functional` | `test-results-functional` |
+| Accessibility | `playwright-report-accessibility` | `test-results-accessibility` |
 
 ### Exercise 6: View HTML Report
 
-1. Extract the downloaded `playwright-report` ZIP file.
-2. Open `index.html` in a browser.
+1. Download and extract one of the HTML report artifacts.
+2. From `playwright-tests`, run `npx playwright show-report <extracted-report-directory>`.
 3. Explore the interactive report: test names, durations, pass/fail status, and
-   screenshots for every test (enabled by `PLAYWRIGHT_SCREENSHOT=on` in
-   `run-tests.ps1`).
+  screenshots for every test (enabled by `PLAYWRIGHT_SCREENSHOT=on` in the pipeline).
 
-This report is the same one generated locally when running `npx playwright test`, but
-now it is produced automatically on every pipeline run.
+These reports match local runs with `npm run test:functional` and
+`npm run test:accessibility`. Each job's report contains only its own suite.
 
 ### Exercise 7: Discussion
 
@@ -182,9 +161,13 @@ Consider these pipeline strategies with your team:
 
 ## Verification Checkpoint
 
-The Azure DevOps pipeline has run successfully. Test results appear in the **Tests**
-tab and the `playwright-report` and `test-results-screenshots` artifacts are available
-for download.
+Both matrix jobs finish, the **Tests** tab contains separate suite runs, and all
+four artifacts are available when tests execute. Diagnose failures from the live
+site using the corresponding suite's evidence; do not assume all scans will pass.
+
+The functional suite includes intentional `@failure-demo` tests for practicing
+failure investigation. These can make the functional job red even when normal
+scenarios pass; the accessibility job should still complete independently.
 
 ## Summary
 
@@ -192,18 +175,11 @@ CI/CD pipelines ensure tests run consistently on every code change without manua
 intervention. The pipeline automates browser installation, test execution, and report
 generation in a clean environment, catching regressions before they reach production.
 
-## Workshop Complete
+## Next Steps
 
-Congratulations on completing the Playwright 101 workshop! Here is a recap of what
-you accomplished:
-
-* **Lab 00**: Set up your development environment with Node.js, VS Code, and
-  Playwright
-* **Lab 01**: Translated user stories into structured test scenarios
-* **Lab 02**: Wrote and ran Playwright tests against a live web application
-* **Lab 03**: Used GitHub Copilot to accelerate test authoring and learned the
-  two-prompt technique
-* **Lab 04**: Automated test execution with an Azure DevOps CI/CD pipeline
+Continue with [Lab 05: Accessibility Testing](../lab-05-accessibility/) to explore
+the axe scans, diagnose violations, and practice manual checks. This optional
+20-minute extension follows the one-hour core workshop.
 
 ### Resources for Further Learning
 

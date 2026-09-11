@@ -8,6 +8,8 @@
 
 .copilot-tracking/
 
+/assets/Playwright OSAP Test Scenarios.xlsx
+
 # User-specific files
 *.rsuser
 *.suo

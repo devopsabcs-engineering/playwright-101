@@ -16,20 +16,26 @@ Playwright 101 workshop in a 1-hour format.
   <https://www.ontario.ca/search?query=driver+licence> in a browser)
 - Confirm the GitHub Pages site is live at
   <https://devopsabcs-engineering.github.io/playwright-101/>
-- Test all Playwright tests pass locally: `cd playwright-tests && npx playwright test`
+- From `playwright-tests`, run `npm run test:functional`, then
+  `npm run test:accessibility`. Review both reports and prepare to discuss live-site
+  failures rather than assuming all tests pass.
 - Ensure attendees received the prerequisites link (Lab 00 URL)
 - Verify Wi-Fi and projector or screen sharing work
 
 ## Agenda
 
 | Time | Activity | Notes |
-|------|----------|-------|
+| --- | --- | --- |
 | 0:00–0:02 | Welcome and overview | Share GitHub Pages URL |
 | 0:02–0:12 | Lab 01: Test Planning | Instructor-led walkthrough |
 | 0:12–0:32 | Lab 02: Playwright Basics | Hands-on with instructor support |
 | 0:32–0:47 | Lab 03: Copilot Testing | Hands-on; have fallback for no Copilot |
 | 0:47–0:57 | Lab 04: CI Pipeline | Demo + guided configuration |
 | 0:57–1:00 | Wrap-up and Q&A | Share resources |
+
+Choose either Lab 04 platform for the core session. Offer
+[Lab 05: Accessibility Testing](../labs/lab-05-accessibility/) as a separate
+20-minute extension or follow-up; the core agenda remains one hour.
 
 ## Key Talking Points
 
@@ -55,11 +61,21 @@ generated selectors may not match current page structure.
 
 CI/CD ensures tests run on every code change, catching regressions early. Artifacts
 provide historical test reports that the team can review without re-running tests.
+Show both functional and accessibility matrix jobs, their independent outcomes,
+and the suite-specific artifacts. Actual concurrency depends on available runners
+or Azure DevOps parallel-job capacity.
+
+### Lab 05: Accessibility Extension
+
+Run the existing axe scans across home, populated search, and empty search states.
+Inspect the `axe-results` attachment, explain a violation or an incomplete check,
+and demonstrate keyboard navigation. Automated scans supplement manual testing;
+they do not prove WCAG conformance. Use a saved report if the live site is unavailable.
 
 ## Common Issues and Solutions
 
 | Issue | Solution |
-|-------|----------|
+| --- | --- |
 | Node.js version mismatch | Verify `node --version` shows v20+; use nvm to switch |
 | Tests timeout on first run | ontario.ca React SPA needs warm-up; increase timeout or retry |
 | Language splash page appears | Cookie handling in beforeEach should prevent this; verify cookie domain is `.ontario.ca` |

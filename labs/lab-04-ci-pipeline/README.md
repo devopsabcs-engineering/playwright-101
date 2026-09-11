@@ -2,12 +2,12 @@
 layout: default
 title: "Lab 04: CI/CD Pipeline"
 nav_order: 6
-description: "Automate Playwright tests with GitHub Actions"
+description: "Run functional and accessibility Playwright tests in parallel with GitHub Actions"
 permalink: /labs/lab-04-ci-pipeline/
 ---
 
 | | |
-|---|---|
+| --- | --- |
 | **Duration** | 15 minutes |
 | **Level** | Beginner |
 | **Type** | Demo + Configuration |
@@ -18,6 +18,7 @@ After completing this lab, you will be able to:
 
 * Understand CI/CD pipeline concepts for test automation
 * Read and modify a GitHub Actions workflow
+* Run functional and accessibility suites as independent matrix jobs
 * View test results and artifacts in GitHub
 * Decide when to run tests (push, PR, schedule)
 
@@ -30,57 +31,51 @@ After completing this lab, you will be able to:
 
 ### Exercise 1: Review the Workflow
 
-Open `.github/workflows/playwright-tests.yml` in VS Code. This workflow automates
-the entire test cycle on every code change. Walk through each section:
+Open [.github/workflows/playwright-tests.yml](https://github.com/devopsabcs-engineering/playwright-101/blob/main/.github/workflows/playwright-tests.yml)
+in VS Code. It runs on pushes and pull requests targeting `main`, and supports
+manual runs through **Run workflow**. Focus on this matrix from the full workflow:
+
+{% raw %}
 
 ```yaml
-name: Playwright Tests
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 jobs:
   test:
+    name: Playwright ${{ matrix.suite }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: playwright-tests
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install dependencies
-        run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run Playwright tests
-        run: npx playwright test
-      - name: Upload test report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-tests/playwright-report/
-          retention-days: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - suite: functional
+            junitPath: test-results/junit.xml
+            reportPath: playwright-report
+            resultsPath: test-results
+          - suite: accessibility
+            junitPath: test-results/accessibility/junit.xml
+            reportPath: playwright-report/accessibility
+            resultsPath: test-results/accessibility
 ```
 
-Key sections to understand:
+Each matrix entry gets its own Ubuntu runner. With `max-parallel: 2`, both suites
+can run concurrently when runner capacity is available. `fail-fast: false` lets
+one suite finish even if the other fails. Neither suite depends on the other.
 
-* **Trigger events** (`on`): The workflow runs on every push to `main` and on every
-  pull request targeting `main`.
-* **Job configuration** (`runs-on`, `working-directory`): Tests execute on a fresh
-  Ubuntu runner with the working directory set to `playwright-tests`.
-* **Checkout and setup**: `actions/checkout@v4` clones the repository,
-  `actions/setup-node@v4` installs Node.js 20.
-* **Dependency installation**: `npm ci` installs exact versions from the lockfile for
-  reproducible builds.
-* **Browser installation**: `npx playwright install --with-deps chromium` downloads
-  the Chromium browser binary and its system dependencies.
-* **Test execution**: `npx playwright test` runs the full test suite.
-* **Artifact upload**: `actions/upload-artifact@v4` saves the HTML report regardless
-  of test outcome (`if: always()`). The report is retained for 30 days.
+Read the steps below the matrix in the full workflow:
+
+* Checkout and Node.js 20 setup prepare each runner.
+* `npm ci` installs locked dependencies in `playwright-tests`.
+* `npx playwright install --with-deps chromium` installs the browser.
+* `npm run test:${{ matrix.suite }}` selects the functional or accessibility config.
+* `PLAYWRIGHT_SCREENSHOT: 'on'` captures screenshots for every test; the shared
+  config records traces on the first retry.
+* The summary script reads `JUNIT_PATH` from the matrix and writes counts and
+  test details to that job's GitHub summary. A missing JUnit file fails this step.
+* Upload steps use `if: always()` to retain each suite's HTML report, JUnit XML,
+  screenshots, and traces even when tests fail, provided those files were generated.
+  Missing artifact paths fail the upload step. Retention is 30 days.
+
+{% endraw %}
 
 ### Exercise 2: Push a Change
 
@@ -95,20 +90,25 @@ test('navigate to Ontario.ca search page', async ({ page }) => {
 });
 ```
 
-Commit and push the change:
+Commit and push from your work-item feature branch. Replace `1234` with your
+User Story or Bug ID, linked to a Feature and Epic, and open a PR targeting `main`:
 
 ```bash
-git add .
-git commit -m "test: add console.log for CI verification"
-git push
+git add playwright-tests/tests/ontario-search.spec.ts
+git commit -m "test: verify parallel CI suites AB#1234"
+git push -u origin HEAD
 ```
+
+Alternatively, select **Actions > Playwright Tests > Run workflow** to run the
+workflow on `main` without changing a test once the workflow is merged.
 
 ### Exercise 3: Watch the Pipeline
 
 1. Open your repository on GitHub.
 2. Select the **Actions** tab.
-3. Find the workflow run triggered by your push.
-4. Select the run to watch each step execute in real time.
+3. Find the workflow run triggered by your PR or manual dispatch.
+4. Check both **Playwright functional** and **Playwright accessibility** jobs.
+5. Select each job to watch its steps and logs independently.
 
 The workflow progresses through checkout, dependency installation, browser setup, test
 execution, and artifact upload. Each step shows its own log output.
@@ -118,35 +118,43 @@ execution, and artifact upload. Each step shows its own log output.
 After the workflow completes:
 
 1. Check the overall status: green checkmark (passed) or red X (failed).
-2. Scroll to the **Artifacts** section at the bottom of the workflow run.
-3. Download the `playwright-report` artifact.
+2. Read each job's summary for its own test counts and failures.
+3. Scroll to **Artifacts** and find all four suite-specific artifacts:
+
+| Suite | HTML report | JUnit, screenshots, and traces |
+| --- | --- | --- |
+| Functional | `playwright-report-functional` | `test-results-functional` |
+| Accessibility | `playwright-report-accessibility` | `test-results-accessibility` |
 
 ### Exercise 5: View HTML Report
 
-1. Extract the downloaded ZIP file.
-2. Open `index.html` in a browser.
+1. Download and extract one of the HTML report artifacts.
+2. From `playwright-tests`, run `npx playwright show-report <extracted-report-directory>`.
 3. Explore the interactive report: test names, durations, pass/fail status, and
    screenshots for failed tests (when configured).
 
-This report is the same one generated locally when running `npx playwright test`, but
-now it is produced automatically on every pipeline run.
+These reports match local runs with `npm run test:functional` and
+`npm run test:accessibility`. Each job's report contains only its own suite.
 
 ### Exercise 6: Discussion
 
 Consider these pipeline strategies with your team:
 
-* **Quality gate**: Run tests on every pull request and block merging when tests fail.
-  This prevents regressions from reaching the main branch.
-* **Nightly schedule**: Add a cron trigger (`schedule: - cron: '0 2 * * *'`) to catch
-  issues from external dependencies or site changes overnight.
-* **Environment matrix**: Run tests across multiple browsers (Chromium, Firefox,
-  WebKit) using a GitHub Actions matrix strategy to verify cross-browser
-  compatibility.
+* Require both suite checks in a branch protection rule or ruleset on `main`.
+  Running a workflow alone does not block merges.
+* Add a nightly `schedule` trigger to catch changes to the external site.
+* Extend the matrix to other browsers only after adding their projects and
+  browser installation steps.
 
 ## Verification Checkpoint
 
-The GitHub Actions workflow has run successfully. Test results appear in the Actions
-tab and the `playwright-report` artifact is available for download.
+Both matrix jobs finish, each has a summary, and all four artifacts are available
+when tests execute. If the live site produces failures, identify the failing suite
+and inspect its report rather than treating an expected green status as evidence.
+
+The functional suite includes intentional `@failure-demo` tests for practicing
+failure investigation. These can make the functional job red even when normal
+scenarios pass; the accessibility job should still complete independently.
 
 ## Summary
 
@@ -154,18 +162,11 @@ CI/CD pipelines ensure tests run consistently on every code change without manua
 intervention. The workflow automates browser installation, test execution, and report
 generation in a clean environment, catching regressions before they reach production.
 
-## Workshop Complete
+## Next Steps
 
-Congratulations on completing the Playwright 101 workshop! Here is a recap of what
-you accomplished:
-
-* **Lab 00**: Set up your development environment with Node.js, VS Code, and
-  Playwright
-* **Lab 01**: Translated user stories into structured test scenarios
-* **Lab 02**: Wrote and ran Playwright tests against a live web application
-* **Lab 03**: Used GitHub Copilot to accelerate test authoring and learned the
-  two-prompt technique
-* **Lab 04**: Automated test execution with a GitHub Actions CI/CD pipeline
+Continue with [Lab 05: Accessibility Testing](../lab-05-accessibility/) to explore
+the axe scans, diagnose violations, and practice manual checks. This optional
+20-minute extension follows the one-hour core workshop.
 
 ### Resources for Further Learning
 

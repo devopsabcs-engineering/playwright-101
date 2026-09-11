@@ -1,7 +1,7 @@
 // Renders the Playwright JUnit results as a Markdown table in the GitHub Actions job summary.
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 
-const JUNIT_PATH = 'test-results/junit.xml';
+const JUNIT_PATH = process.env.JUNIT_PATH || 'test-results/junit.xml';
 const summaryFile = process.env.GITHUB_STEP_SUMMARY;
 
 function writeSummary(markdown) {
@@ -14,7 +14,7 @@ function writeSummary(markdown) {
 
 if (!existsSync(JUNIT_PATH)) {
   writeSummary(`## Playwright Test Results\n\n⚠️ No test results file found at \`${JUNIT_PATH}\`.\n`);
-  process.exit(0);
+  process.exit(1);
 }
 
 const xml = readFileSync(JUNIT_PATH, 'utf8');
