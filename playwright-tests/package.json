@@ -4,12 +4,15 @@
   "description": "Playwright tests for the Playwright 101 workshop",
   "scripts": {
     "test": "playwright test",
+    "test:functional": "playwright test --config=playwright.config.ts",
+    "test:accessibility": "playwright test --config=playwright.accessibility.config.ts",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "codegen": "playwright codegen https://www.ontario.ca/search?query=driver+licence",
     "report": "playwright show-report"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.52.0"
   }
 }

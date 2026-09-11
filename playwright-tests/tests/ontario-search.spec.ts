@@ -62,6 +62,28 @@ test.describe('Ontario.ca Search', () => {
     ).toBeVisible({ timeout: 10000 });
   });
 
+  test('intentional failure: expects the wrong government page title @failure-demo', async ({ page }) => {
+    await page.goto('/search/search-results/?query=driver+licence');
+    await expect(page).toHaveTitle(/ontario/i);
+
+    await expect(
+      page,
+      'Intentional demo error: Ontario.ca is not the Government of Canada website'
+    ).toHaveTitle(/Government of Canada/i);
+  });
+
+  test('intentional failure: expects the old query after editing search @failure-demo', async ({ page }) => {
+    await page.goto('/search/search-results/?query=driver+licence');
+    const searchInput = page.locator('#search-input-field');
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill('health card');
+
+    await expect(
+      searchInput,
+      'Intentional demo error: the search value changed to health card, but the test expects the old query'
+    ).toHaveValue('driver licence');
+  });
+
   test('search input field is visible and functional', async ({ page }) => {
     // Bonus: Verify search input field presence and interaction
     await page.goto('/search/search-results/?query=driver+licence');

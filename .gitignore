@@ -387,6 +387,7 @@ MigrationBackup/
 
 # Node.js
 node_modules/
+package-lock.json
 
 # Playwright
 playwright-tests/test-results/

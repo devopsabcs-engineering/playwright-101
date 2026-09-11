@@ -11,37 +11,64 @@ pr:
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
-  - task: NodeTool@0
-    inputs:
-      versionSpec: '20.x'
-    displayName: 'Install Node.js'
+jobs:
+  - job: Playwright
+    displayName: 'Playwright tests'
+    strategy:
+      maxParallel: 2
+      matrix:
+        Functional:
+          suite: 'functional'
+          junitPath: 'test-results/junit.xml'
+          reportPath: 'playwright-report'
+          resultsPath: 'test-results'
+        Accessibility:
+          suite: 'accessibility'
+          junitPath: 'test-results/accessibility/junit.xml'
+          reportPath: 'playwright-report/accessibility'
+          resultsPath: 'test-results/accessibility'
+    steps:
+      - task: UseNode@1
+        inputs:
+          version: '20.x'
+        displayName: 'Install Node.js'
 
-  - task: PowerShell@2
-    inputs:
-      targetType: 'filePath'
-      filePath: 'scripts/run-tests.ps1'
-      pwsh: true
-    displayName: 'Run Playwright tests'
+      - script: npm install
+        workingDirectory: 'playwright-tests'
+        displayName: 'Install test dependencies'
 
-  - task: PublishTestResults@2
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: 'JUnit'
-      testResultsFiles: 'playwright-tests/test-results/junit.xml'
-      failTaskOnFailedTests: true
-    displayName: 'Publish test results'
+      - script: npx playwright install --with-deps chromium
+        workingDirectory: 'playwright-tests'
+        displayName: 'Install Chromium and system dependencies'
 
-  - task: PublishPipelineArtifact@1
-    condition: succeededOrFailed()
-    inputs:
-      targetPath: 'playwright-tests/playwright-report'
-      artifact: 'playwright-report'
-    displayName: 'Publish Playwright HTML report'
+      - script: npm run test:$(suite)
+        workingDirectory: 'playwright-tests'
+        env:
+          CI: 'true'
+          PLAYWRIGHT_HTML_OPEN: 'never'
+          PLAYWRIGHT_SCREENSHOT: 'on'
+        displayName: 'Run $(suite) tests'
 
-  - task: PublishPipelineArtifact@1
-    condition: succeededOrFailed()
-    inputs:
-      targetPath: 'playwright-tests/test-results'
-      artifact: 'test-results-screenshots'
-    displayName: 'Publish test result screenshots'
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: 'playwright-tests/$(junitPath)'
+          testRunTitle: 'Playwright $(suite)'
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+        displayName: 'Publish $(suite) test results'
+
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: 'playwright-tests/$(reportPath)'
+          artifact: 'playwright-report-$(suite)'
+        displayName: 'Publish $(suite) HTML report'
+
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: 'playwright-tests/$(resultsPath)'
+          artifact: 'test-results-$(suite)'
+        displayName: 'Publish $(suite) screenshots and traces'
