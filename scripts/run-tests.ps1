@@ -5,10 +5,28 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 Set-Location -Path (Join-Path $PSScriptRoot '..\playwright-tests')
 
-if (-not (Test-Path 'node_modules')) {
+$playwrightCommand = if ($IsWindows) { 'node_modules/.bin/playwright.cmd' } else { 'node_modules/.bin/playwright' }
+$requiredFiles = @(
+    $playwrightCommand
+    'node_modules/@playwright/test/package.json'
+    'node_modules/@axe-core/playwright/package.json'
+)
+
+if ($requiredFiles | Where-Object { -not (Test-Path $_ -PathType Leaf) }) {
     Write-Host 'Installing dependencies...' -ForegroundColor Cyan
-    npm install
-    npx playwright install --with-deps chromium
+    npm install --include=dev
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Dependency installation failed. Resolve the npm error above and rerun this script.'
+    }
+    if ($requiredFiles | Where-Object { -not (Test-Path $_ -PathType Leaf) }) {
+        throw 'Required test dependencies are still missing after npm install.'
+    }
+}
+
+Write-Host 'Ensuring Chromium is installed...' -ForegroundColor Cyan
+& (Join-Path (Get-Location).Path $playwrightCommand) install --with-deps chromium
+if ($LASTEXITCODE -ne 0) {
+    throw 'Chromium installation failed. Resolve the error above and rerun this script.'
 }
 
 $env:PLAYWRIGHT_SCREENSHOT = 'on'
