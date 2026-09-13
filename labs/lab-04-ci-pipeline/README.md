@@ -63,7 +63,7 @@ one suite finish even if the other fails. Neither suite depends on the other.
 
 Read the steps below the matrix in the full workflow:
 
-* Checkout and Node.js 20 setup prepare each runner.
+* Checkout and Node.js 24 setup prepare each runner.
 * `npm ci` installs locked dependencies in `playwright-tests`.
 * `npx playwright install --with-deps chromium` installs the browser.
 * `npm run test:${{ matrix.suite }}` selects the functional or accessibility config.

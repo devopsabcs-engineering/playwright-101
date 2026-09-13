@@ -38,8 +38,15 @@ cd playwright-tests
 npx playwright test
 ```
 
-All 7 tests should pass. The output shows each test name with a green checkmark and
-the total execution time. If any test fails, revisit Lab 00 to confirm your setup.
+The suite includes seven normal scenarios and two intentional `@failure-demo`
+tests. To check the normal scenarios without those demonstrations:
+
+```bash
+npx playwright test --grep-invert @failure-demo
+```
+
+The output shows test names and execution times. Revisit Lab 00 for dependency or
+browser errors; investigate live-site assertion failures separately.
 
 ### Exercise 2: Explore Test Structure
 
@@ -220,7 +227,8 @@ again:
 await expect(page).toHaveTitle(/ontario/i);
 ```
 
-Run `npx playwright test` to confirm all tests pass.
+Run `npx playwright test` to confirm your modified test passes. The `@failure-demo`
+tests remain intentionally failing.
 
 ## Verification Checkpoint
 

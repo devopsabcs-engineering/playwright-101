@@ -13,6 +13,14 @@ exclude:
   - assets/initial-research.md
 defaults:
   - scope:
+      path: ""
+    values:
+      lang: en
+  - scope:
+      path: "fr"
+    values:
+      lang: fr
+  - scope:
       path: "images"
     values:
       nav_exclude: true
