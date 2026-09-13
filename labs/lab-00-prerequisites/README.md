@@ -88,18 +88,28 @@ Run the test suite to confirm everything is configured correctly:
 npx playwright test
 ```
 
-All tests should pass. A successful run produces output showing each test with a green
-checkmark.
+The suite includes seven normal scenarios and two intentional `@failure-demo`
+tests for practicing failure investigation. To check only the normal scenarios:
+
+```bash
+npx playwright test --grep-invert @failure-demo
+```
+
+Tests target the English version of Ontario.ca. Keep English strings in the code.
+The live site can change; distinguish setup errors from assertion failures before
+changing your environment.
 
 ## Verification Checkpoint
 
-All 7 Playwright tests pass in the terminal. If any test fails, review the exercises
-above and confirm each step completed successfully.
+The seven normal scenarios start without dependency or browser errors. Investigate
+any live-site failures separately from the two intentional demonstrations. For
+setup errors, revisit the relevant exercise above.
 
 ## Summary
 
-Your development environment is ready for the workshop. You have Node.js, VS Code
-with the required extensions, Playwright browsers, and a passing test suite.
+Your development environment includes Node.js, VS Code with the required
+extensions, and Chromium for Playwright. You can run the suite and recognize
+intentional failures.
 
 ## Next Steps
 
