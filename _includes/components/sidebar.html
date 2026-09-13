@@ -1,5 +1,8 @@
 {% assign current_language = page.lang | default: 'en' %}
 {% assign english_url = page.url | remove_first: '/fr' %}
+{% assign french_url = '/fr' | append: english_url %}
+{% assign french_page = site.html_pages | where: 'url', french_url | first %}
+{% unless french_page %}{% assign french_url = '/fr/' %}{% endunless %}
 {% if current_language == 'fr' %}
   {% assign home_url = '/fr/' %}
   {% assign home_title = 'Atelier Playwright 101' %}
@@ -22,7 +25,7 @@
       <span aria-hidden="true"> | </span><span lang="fr" aria-current="true">Français</span>
     {% else %}
       <span lang="en" aria-current="true">English</span><span aria-hidden="true"> | </span>
-      <a href="{{ '/fr' | append: page.url | relative_url }}" lang="fr" hreflang="fr">Français</a>
+      <a href="{{ french_url | relative_url }}" lang="fr" hreflang="fr">Français</a>
     {% endif %}
   </nav>
   <nav id="site-nav" class="site-nav" aria-label="{{ navigation_label }}">
