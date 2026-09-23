@@ -49,11 +49,15 @@ jobs:
       matrix:
         Functional:
           suite: 'functional'
+          testSuiteId: '3203'
+          expectedTestCount: '9'
           junitPath: 'test-results/junit.xml'
           reportPath: 'playwright-report'
           resultsPath: 'test-results'
         Accessibility:
           suite: 'accessibility'
+          testSuiteId: '3204'
+          expectedTestCount: '3'
           junitPath: 'test-results/accessibility/junit.xml'
           reportPath: 'playwright-report/accessibility'
           resultsPath: 'test-results/accessibility'
@@ -70,8 +74,10 @@ Read the steps below the matrix in the full pipeline:
 * `npm run test:$(suite)` selects the functional or accessibility config.
 * `PLAYWRIGHT_SCREENSHOT: 'on'` enables screenshots for every test, and the shared
   config records traces on the first retry.
-* `PublishTestResults@2` publishes `$(junitPath)` with the title
-  `Playwright $(suite)`. Failed tests or missing JUnit results fail this step.
+* `PowerShell@2` runs `scripts/publish-test-plan-results.ps1` to publish
+  `$(junitPath)` into a build-linked automated run in Test Plan `3201`.
+  Failed tests, missing results, unmatched automation identities, or publication
+  errors fail this step. It runs after test failures with `succeededOrFailed()`.
 * `PublishPipelineArtifact@1` publishes suite-specific reports and raw results with
   `condition: succeededOrFailed()`, preserving generated evidence after failures.
 
@@ -79,6 +85,48 @@ Read the steps below the matrix in the full pipeline:
 > The YAML `pr` trigger applies to GitHub repositories. For Azure Repos Git,
 > configure a build validation branch policy on `main` to run this pipeline for PRs.
 > The `trigger` section runs builds for pushes to `main` in either case.
+
+### Test Plan Publishing Setup
+
+This project's pipeline targets Plan `3201`, with static suites `3203`
+(Functionality, nine cases) and `3204` (Accessibility, three cases). Each case must
+have its native automation association: exact test name, source filename, and
+automation ID. Each case currently has one test configuration and test point.
+Change the plan ID, suite IDs, and expected counts when using another project.
+
+The publisher matches JUnit `name` and `classname` to those associations, creates
+a run bound to the suite's test points and current build, records actual outcomes,
+attaches the original JUnit report, and completes the run. It then verifies each
+point's last run and outcome. It does not change test-case workflow states or mark
+User Stories complete. Failed tests stay failed; skipped tests are not passed.
+
+Native automation association alone does not update test point outcomes when
+using `PublishTestResults@2`. This pipeline replaces that task with plan-aware
+publishing, so each suite has one build-linked run per job attempt. Retrying a job
+creates another execution attempt. Do not add the old publisher alongside this
+step, or the build will contain duplicate result sets. Screenshots, traces, and
+HTML reports remain pipeline artifacts; result comments link to them.
+
+The YAML passes `$(System.AccessToken)` only to the publishing step. In Azure
+DevOps, ensure the job's Build Service identity can read the plan, suites, and
+work items and has **View test runs**, **Create test runs**, and **Manage test runs**
+permissions. For a project-scoped job token this is normally
+`OnSIS Build Service (MngEnvMCAP675646)`; collection-scoped jobs use the collection
+Build Service identity. A `401` or `403` fails publication and requires checking
+token availability and these permissions. Do not substitute a PAT in source code.
+Only trusted pipeline code should receive this write-capable token.
+
+Run the publisher's isolated checks from the repository root:
+
+```powershell
+pwsh -File scripts/publish-test-plan-results.Tests.ps1
+```
+
+These checks use mocked API responses and do not write to Azure DevOps. After
+publishing the YAML, verify a real CI run using the Build Service identity.
+Concurrent executions targeting the same test points compete for the latest
+outcome; a verification mismatch fails the step rather than claiming success.
+On-demand execution from the Test Plans UI is not configured by this publisher.
 
 ### Exercise 2: Create the Pipeline in Azure DevOps
 
@@ -136,6 +184,10 @@ After the pipeline completes:
 | --- | --- | --- |
 | Functional | `playwright-report-functional` | `test-results-functional` |
 | Accessibility | `playwright-report-accessibility` | `test-results-accessibility` |
+
+Open **Test Plans** > Plan `3201` > **Execute** and inspect each static suite.
+Confirm the nine functional and three accessibility points have the same
+outcomes as the build-linked runs, with populated last-run and result links.
 
 ### Exercise 6: View HTML Report
 

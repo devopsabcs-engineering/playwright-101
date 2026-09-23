@@ -3,6 +3,14 @@ trigger:
     include:
       - main
 
+# schedules:
+#   - cron: '*/5 * * * *'
+#     displayName: 'Run every 5 minutes'
+#     branches:
+#       include:
+#         - main
+#     always: true
+
 pr:
   branches:
     include:
@@ -19,11 +27,15 @@ jobs:
       matrix:
         Functional:
           suite: 'functional'
+          testSuiteId: '3203'
+          expectedTestCount: '9'
           junitPath: 'test-results/junit.xml'
           reportPath: 'playwright-report'
           resultsPath: 'test-results'
         Accessibility:
           suite: 'accessibility'
+          testSuiteId: '3204'
+          expectedTestCount: '3'
           junitPath: 'test-results/accessibility/junit.xml'
           reportPath: 'playwright-report/accessibility'
           resultsPath: 'test-results/accessibility'
@@ -49,15 +61,18 @@ jobs:
           PLAYWRIGHT_SCREENSHOT: 'on'
         displayName: 'Run $(suite) tests'
 
-      - task: PublishTestResults@2
+      - task: PowerShell@2
         condition: succeededOrFailed()
         inputs:
-          testResultsFormat: 'JUnit'
-          testResultsFiles: 'playwright-tests/$(junitPath)'
-          testRunTitle: 'Playwright $(suite)'
-          failTaskOnFailedTests: true
-          failTaskOnMissingResultsFile: true
-        displayName: 'Publish $(suite) test results'
+          pwsh: true
+          targetType: 'inline'
+          script: >-
+            & './scripts/publish-test-plan-results.ps1'
+            -Suite '$(suite)' -PlanId 3201 -SuiteId $(testSuiteId)
+            -ExpectedCount $(expectedTestCount) -JunitPath 'playwright-tests/$(junitPath)'
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+        displayName: 'Publish $(suite) results to Test Plan 3201'
 
       - task: PublishPipelineArtifact@1
         condition: succeededOrFailed()
