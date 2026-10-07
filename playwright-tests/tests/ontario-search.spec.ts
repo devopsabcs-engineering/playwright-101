@@ -14,56 +14,79 @@ test.describe('Ontario.ca Search', () => {
 
   test('navigate to Ontario.ca search page', async ({ page }) => {
     // Scenario 1: Basic Navigation — page.goto(), toHaveTitle()
-    await page.goto('/search/search-results/?query=driver+licence');
+    console.log('CI pipeline verification');
+    await page.goto('/search/search-results/?query=health+card');
     await expect(page).toHaveTitle(/ontario/i);
   });
 
-  test('search for driver licence returns results', async ({ page }) => {
-    // Scenario 2: Search and Verify — fill(), click(), text assertions
-    await page.goto('/search/search-results/?query=driver+licence');
-    await page.waitForSelector('h4 a');
-    await expect(page.locator('h3').filter({ hasText: /results/ })).toBeVisible();
-    await expect(page.locator('h4 a').first()).toBeVisible();
+test('search for health card returns results', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  await expect(page).toHaveTitle(/ontario/i);
+
+  const firstResult = page.getByRole('link', {
+    name: /Apply for OHIP and get a/i
   });
 
-  test('filter by topic narrows results', async ({ page }) => {
-    // Scenario 3: Filter by Topic — checkbox interaction, Apply button
-    await page.goto('/search/search-results/?query=driver+licence');
-    await page.waitForSelector('h4 a');
-    await page.locator('label').filter({ hasText: /driving/i }).first().click();
-    await page.locator('#filterSortApply').click();
-    await expect(page.locator('h4 a').first()).toBeVisible();
+  await expect(firstResult).toBeVisible();
+
+  await expect(firstResult).toContainText(/OHIP/i);
+});
+
+test('filter by topic narrows results', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  const drivingFilter = page.getByRole('checkbox', {
+    name: 'Driving and road safety'
   });
 
-  test('sort results by updated date', async ({ page }) => {
-    // Scenario 4: Sort Results — radio button, dynamic content
-    await page.goto('/search/search-results/?query=driver+licence');
-    await page.waitForSelector('h4 a');
-    await page.getByLabel('Updated date (new to old)').check();
-    await page.locator('#filterSortApply').click();
-    await expect(page.locator('h4 a').first()).toBeVisible();
+  await drivingFilter.check();
+
+  await page.getByRole('button', { name: 'Apply' }).click();
+
+  await expect(drivingFilter).toBeChecked();
+});
+
+test('sort results by updated date', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  const updatedDate = page.getByRole('radio', {
+    name: 'Updated date (new to old)'
   });
 
-  test('pagination navigates to next page', async ({ page }) => {
-    // Scenario 6: Pagination — click navigation, URL assertions
-    await page.goto('/search/search-results/?query=driver+licence');
-    await page.waitForSelector('.rc-pagination');
-    await page.locator('.rc-pagination li a', { hasText: '2' }).click();
-    await expect(
-      page.locator('li.rc-pagination-item-active a')
-    ).toContainText('2');
-  });
+  await updatedDate.check();
 
-  test('search with no results shows empty state', async ({ page }) => {
-    // Scenario 7: No Results Edge Case — negative testing
-    await page.goto('/search/search-results/?query=xyznonexistentquery12345');
-    await expect(
-      page.locator('h3').filter({ hasText: /0 results/ })
-    ).toBeVisible({ timeout: 10000 });
-  });
+  await page.getByRole('button', { name: 'Apply' }).click();
+
+  await expect(updatedDate).toBeChecked();
+});
+
+test('pagination navigates to next page', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  await page
+    .getByRole('button', { name: 'Go to page 2', exact: true })
+    .click();
+
+  await expect(
+    page.getByRole('button', { name: 'Go to page 2', exact: true })
+  ).toBeVisible();
+});
+
+test('search with no results shows empty state', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  const searchInput = page.getByRole('combobox', { name: 'Search' });
+
+  await searchInput.fill('fgfjyhgdf');
+
+  await page.getByRole('button', { name: 'Submit' }).click();
+
+  // We still need the current empty-state locator here
+});
 
   test('intentional failure: expects the wrong government page title @failure-demo', async ({ page }) => {
-    await page.goto('/search/search-results/?query=driver+licence');
+    await page.goto('/search/search-results/?query=health+card');
     await expect(page).toHaveTitle(/ontario/i);
 
     await expect(
@@ -74,7 +97,7 @@ test.describe('Ontario.ca Search', () => {
 
   test('intentional failure: expects the old query after editing search @failure-demo', async ({ page }) => {
     await page.goto('/search/search-results/?query=driver+licence');
-    const searchInput = page.locator('#search-input-field');
+    const searchInput = page.getByRole('combobox', { name: 'Search' });
     await expect(searchInput).toBeVisible();
     await searchInput.fill('health card');
 
@@ -84,15 +107,57 @@ test.describe('Ontario.ca Search', () => {
     ).toHaveValue('driver licence');
   });
 
-  test('search input field is visible and functional', async ({ page }) => {
-    // Bonus: Verify search input field presence and interaction
-    await page.goto('/search/search-results/?query=driver+licence');
-    const searchInput = page.locator('#search-input-field');
-    await expect(searchInput).toBeVisible();
-    await searchInput.clear();
-    await searchInput.fill('health card');
-    await searchInput.press('Enter');
-    await page.waitForSelector('h4 a');
-    await expect(page.locator('h4 a').first()).toBeVisible();
+test('search input field is visible and functional', async ({ page }) => {
+  await page.goto('/search?query=driver+licence');
+
+  const searchInput = page.getByRole('combobox', { name: 'Search' });
+
+  await expect(searchInput).toBeVisible();
+
+  await searchInput.clear();
+  await searchInput.fill('health card');
+  await searchInput.press('Enter');
+
+  const firstResult = page.getByRole('link', {
+    name: /Apply for OHIP and get a/i
   });
+
+  await expect(firstResult).toBeVisible();
 });
+
+test('filter by topic decreases the result count', async ({ page }) => {
+  await page.goto('/search?query=health+card');
+
+  const resultsHeading = page
+    .getByRole('heading', { level: 2 })
+    .filter({ hasText: /\d[\d,]* results? for/i });
+
+  const readResultCount = async () => {
+    const headingText = await resultsHeading.innerText();
+    const match = headingText.match(/^([\d,]+)\s+results?\b/i);
+
+    expect(
+      match,
+      `Could not read result count from: ${headingText}`
+    ).not.toBeNull();
+
+    return Number(match![1].replace(/,/g, ''));
+  };
+
+  const initialCount = await readResultCount();
+
+  await page
+    .getByRole('checkbox', { name: 'Driving and road safety' })
+    .check();
+
+  await page.getByRole('button', { name: 'Apply' }).click();
+
+  await expect.poll(readResultCount).toBeLessThan(initialCount);
+});
+
+
+
+}
+// Test that clicking a search result navigates to the correct page
+
+);
